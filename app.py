@@ -104,12 +104,14 @@ st.markdown("""
 
 #====================================== LISTAS DE FILTROS PARTE 1 - PRE CÁLCULO PARA OPTIMIZAR RENDIMIENTO ==============================================
 @st.cache_data(show_spinner=False)
-
 def precompute_filter_lists(df):
     # Lista de instituciones y sectores
     inst_list = sorted(df['Institución'].dropna().unique().tolist())
     sector_list = sorted(df['Sector'].dropna().unique().tolist())
-
+    
+    # Precomputar relaciones sector-institución
+    sector_a_instituciones = df.groupby('Sector')['Institución'].unique().apply(list).to_dict()
+    
     # Precomputar años disponibles por institución
     years_by_institucion = {}
     for inst in inst_list:
@@ -122,23 +124,32 @@ def precompute_filter_lists(df):
         years = sorted(df[df['Sector'] == sec]['Año'].dropna().unique().tolist())
         years_by_sector[sec] = years
 
-    return inst_list, sector_list, years_by_institucion, years_by_sector
-
+    return inst_list, sector_list, years_by_institucion, years_by_sector, sector_a_instituciones
 
 #===================================== LISTAS DE FILTROS PARTE 2 - OBTENCIÓN DE LISTA DE FILTROS PRECOMPUTADAS ==============================================
-inst_list, sector_list, years_by_inst, years_by_sector = precompute_filter_lists(df1)  # Obtener listas de filtros precomputadas (se calcula una única vez por sesión)
+inst_list, sector_list, years_by_inst, years_by_sector, sector_a_instituciones = precompute_filter_lists(df1)
 
 col1, col2, col3 = st.columns(3) # Guardar filtros
 with col1:
-    institucion = st.selectbox("Seleccione la Institución", inst_list)
-with col2:
+    # Filtro de sector primero para que afecte a instituciones
     sector = st.selectbox("Seleccione el Sector", ["Todas"] + sector_list)
+    
+with col2:
+    # Filtro de instituciones que depende del sector seleccionado
+    if sector == "Todas":
+        instituciones_filtradas = inst_list
+    else:
+        instituciones_filtradas = sorted(sector_a_instituciones.get(sector, []))
+        
+    institucion = st.selectbox("Seleccione la Institución", instituciones_filtradas)
+    
 with col3:
-    # Se seleccionan los años basados en la opción de sector o institución
+    # Filtro de años que depende del sector o institución
     if sector != "Todas":
         available_years = years_by_sector.get(sector, [])
     else:
         available_years = years_by_inst.get(institucion, [])
+        
     year = st.selectbox("Seleccione el Año", available_years)
 
 
@@ -177,7 +188,7 @@ trimestres = ['1', '2', '3', '4']
 
 def generate_dashboard(institucion, year, sector):
   #----- Parte 1 de la función: Calcula data para reportes -----#
-    if sector != "Todas":                                       # -------------------- # Caso 1: Ssector != "Todas"
+    if sector != "Todas":                                       # -------------------- # Caso 1: Sector != "Todas"
         filtered = df1[(df1['Sector'] == sector) & (df1['Año'] == year)]               # Filtra PTAR o df1 por Sector y Año y lo guarda en filtered
         instituciones_list = "<ul style='margin:0; padding-left:20px;'>" + "".join(
           f"<li>{inst}</li>" for inst in filtered['Institución'].unique()) + "</ul>"   # Crea lista desordenada de HTML con las instituciones del sector seleccionado y los imprime
@@ -214,6 +225,8 @@ def generate_dashboard(institucion, year, sector):
     for key in data:
         if pd.isna(data[key]):
             data[key] = 0
+        elif isinstance(data[key], (int, float)) and not str(key).endswith("Cumplimiento"):
+            data[key] = int(round(data[key]))
 
   #---- Parte 3 de la función: Obtenido data, se obtienen los indicadores principales de la pestaña PTAR - Total de AC_Total y Riesgos ----#
     stats = f"""
@@ -629,25 +642,25 @@ with tabs[1]:
 #============================================= SE ABRE LA SECCIÓN 2 - "Programa de Trabajo de Control Interno - Desglose por Institución" =============================================
 #------------------------------------------------------------------------------------------------------------------------------------------------------------#---------------------------------------------------------------------------------------
 
-        # Condición para mostrar la Sección 2                      
+        # Condición para mostrar la Sección 2
         if sector != "Todas":
             st.markdown("""
-              <div style='background-color:#621132; color:white; padding:10px; border-radius:5px; margin-bottom:10px; text-align:center;'>   
+              <div style='background-color:#621132; color:white; padding:10px; border-radius:5px; margin-bottom:10px; text-align:center;'>
                 Desglose por Institución
               </div>
             """, unsafe_allow_html=True)
-            
+
             #------------- Filtro por Institución --------------
             selected_institucion = st.selectbox("Filtrar por Institución", options=sorted(df_ptci["Institución"].unique()))
-            
+
             #----------------- Desglose de las variables a mostrar -----------------#
             desglose = df_ptci[["Año", "Institución", "Cumplimiento_General_de_las_NGCI", "Informe_Anual_Finalizado", "SUBIO_ARCHIVO",
                                 "Se_Actualizó_el_Programa", "No_Se_Actualizó_el_Programa",
                                 "Acciones_de_Mejora_Programa_Original", "TotalAcciones_de_Mejora_Programa_Actualizado"]]
-            
+
             # Filtrar el DataFrame según la institución seleccionada
             desglose = desglose[desglose["Institución"] == selected_institucion]
-            
+
             #------------- Diccionario de etiquetas amigables --------------
             friendly_labels = {
                 "Año": "Año",
@@ -660,17 +673,17 @@ with tabs[1]:
                 "Acciones_de_Mejora_Programa_Original": "Acciones Mejora (Original)",
                 "TotalAcciones_de_Mejora_Programa_Actualizado": "Acciones Mejora (Actualizado)"
             }
-            
+
             #----------------- Creando las columnas de la Tabla HTML para el desglose -----------------#
             desglose_html = "<div style='overflow-x:auto; margin-bottom:20px; font-size:12px; padding:5px;'><table style='width:100%; border-collapse:collapse;'>"
             desglose_html += "<tr style='background-color:#621132; color:white;'>"
-            
+
             #----------------- Llenado de tabla (cabeceras con etiquetas amigables) -----------------#
             for col in desglose.columns:
                 friendly_name = friendly_labels.get(col, col)
                 desglose_html += f"<th style='padding:5px; text-align:center; border:1px solid #ddd;'>{friendly_name}</th>"
             desglose_html += "</tr>"
-            
+
             for _, row in desglose.iterrows():
                 desglose_html += "<tr>"
                 for col in desglose.columns:
@@ -680,7 +693,7 @@ with tabs[1]:
                     desglose_html += f"<td style='padding:5px; text-align:center; border:1px solid #ddd;'>{value}</td>"
                 desglose_html += "</tr>"
             desglose_html += "</table></div>"
-            
+
             #-------------- Parte 2: Mostramos la tabla del programa de trabajo desglosado por institución --------------#
             st.markdown(desglose_html, unsafe_allow_html=True)
 
@@ -917,4 +930,4 @@ with tabs[1]:
 with tabs[2]:
     st.markdown("<h2>REPORTES</h2><p>Información Actualizada al 19/03/2025.</p>", unsafe_allow_html=True)
 
-#CORREGIDO V 2.1
+#CORREGIDO V 2.1.1
