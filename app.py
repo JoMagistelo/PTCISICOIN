@@ -104,7 +104,6 @@ st.markdown("""
 
 #====================================== LISTAS DE FILTROS PARTE 1 - PRE CÁLCULO PARA OPTIMIZAR RENDIMIENTO ==============================================
 @st.cache_data(show_spinner=False)
-
 def precompute_filter_lists(df):
     # Lista de instituciones y sectores
     inst_list = sorted(df['Institución'].dropna().unique().tolist())
@@ -124,15 +123,18 @@ def precompute_filter_lists(df):
 
     return inst_list, sector_list, years_by_institucion, years_by_sector
 
-
 #===================================== LISTAS DE FILTROS PARTE 2 - OBTENCIÓN DE LISTA DE FILTROS PRECOMPUTADAS ==============================================
 inst_list, sector_list, years_by_inst, years_by_sector = precompute_filter_lists(df1)  # Obtener listas de filtros precomputadas (se calcula una única vez por sesión)
 
-col1, col2, col3 = st.columns(3) # Guardar filtros
+# Callback para reiniciar sector a "Todas" al cambiar la institución
+def reset_sector():
+    st.session_state['sector'] = "Todas"
+
+col1, col2, col3 = st.columns(3)  # Guardar filtros
 with col1:
-    institucion = st.selectbox("Seleccione la Institución", inst_list)
+    institucion = st.selectbox("Seleccione la Institución", inst_list, key="institucion", on_change=reset_sector)
 with col2:
-    sector = st.selectbox("Seleccione el Sector", ["Todas"] + sector_list)
+    sector = st.selectbox("Seleccione el Sector", ["Todas"] + sector_list, key="sector")
 with col3:
     # Se seleccionan los años basados en la opción de sector o institución
     if sector != "Todas":
@@ -140,6 +142,7 @@ with col3:
     else:
         available_years = years_by_inst.get(institucion, [])
     year = st.selectbox("Seleccione el Año", available_years)
+
 
 
 #======================================= FIN DE LA CABECERA DE LA APP Y CONFIGURACIÓN DE FILTROS PRINCIPALES =========================================================
