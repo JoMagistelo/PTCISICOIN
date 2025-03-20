@@ -626,33 +626,51 @@ with tabs[1]:
         st.markdown(ptci_table, unsafe_allow_html=True)
 
 
+#============================================= SE ABRE LA SECCIÓN 2 - "Programa de Trabajo de Control Interno - Desglose por Institución" =============================================
+#------------------------------------------------------------------------------------------------------------------------------------------------------------#---------------------------------------------------------------------------------------
 
-#============================================= SE ABRE LA SECCIÓN 2 - "Programa de Trabajo de Control Interno - Desglose por Institución" ==============================================
-#------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-          #-------------- Parte 1: Vamos a desglosar el Programa de Trabajo para las instituciones que pertenecen al sector seleccionado) ------------#
-                        #----------------- Por lo tanto, esta sección se mostrara si se selecciona un sector diferente a "Todos" -----------------#
-
-        # Condición para mostrar la Sección 2
+        # Condición para mostrar la Sección 2                      
         if sector != "Todas":
             st.markdown("""
-              <div style='background-color:#621132; color:white; padding:10px; border-radius:5px; margin-bottom:20px; text-align:center;'>
-                Programa de Trabajo de Control Interno - Desglose por Institución
+              <div style='background-color:#621132; color:white; padding:10px; border-radius:5px; margin-bottom:10px; text-align:center;'>   
+                Desglose por Institución
               </div>
             """, unsafe_allow_html=True)
-                        #----------------- Desglose de las variables a mostrar" -----------------#
-
+            
+            #------------- Filtro por Institución --------------
+            selected_institucion = st.selectbox("Filtrar por Institución", options=sorted(df_ptci["Institución"].unique()))
+            
+            #----------------- Desglose de las variables a mostrar -----------------#
             desglose = df_ptci[["Año", "Institución", "Cumplimiento_General_de_las_NGCI", "Informe_Anual_Finalizado", "SUBIO_ARCHIVO",
-                               "Se_Actualizó_el_Programa", "No_Se_Actualizó_el_Programa",
-                               "Acciones_de_Mejora_Programa_Original", "TotalAcciones_de_Mejora_Programa_Actualizado"]]
-                        #-----------------  Creando las columnas de la Tabla HTML para el desglose-----------------#
+                                "Se_Actualizó_el_Programa", "No_Se_Actualizó_el_Programa",
+                                "Acciones_de_Mejora_Programa_Original", "TotalAcciones_de_Mejora_Programa_Actualizado"]]
+            
+            # Filtrar el DataFrame según la institución seleccionada
+            desglose = desglose[desglose["Institución"] == selected_institucion]
+            
+            #------------- Diccionario de etiquetas amigables --------------
+            friendly_labels = {
+                "Año": "Año",
+                "Institución": "Institución",
+                "Cumplimiento_General_de_las_NGCI": "Cumplimiento General NGCI",
+                "Informe_Anual_Finalizado": "Informe Anual Finalizado",
+                "SUBIO_ARCHIVO": "Subió Archivo",
+                "Se_Actualizó_el_Programa": "Programa Actualizado",
+                "No_Se_Actualizó_el_Programa": "Programa No Actualizado",
+                "Acciones_de_Mejora_Programa_Original": "Acciones Mejora (Original)",
+                "TotalAcciones_de_Mejora_Programa_Actualizado": "Acciones Mejora (Actualizado)"
+            }
+            
+            #----------------- Creando las columnas de la Tabla HTML para el desglose -----------------#
             desglose_html = "<div style='overflow-x:auto; margin-bottom:20px; font-size:12px; padding:5px;'><table style='width:100%; border-collapse:collapse;'>"
             desglose_html += "<tr style='background-color:#621132; color:white;'>"
-                        #----------------- LLenado de tabla -----------------#
+            
+            #----------------- Llenado de tabla (cabeceras con etiquetas amigables) -----------------#
             for col in desglose.columns:
-                desglose_html += f"<th style='padding:5px; text-align:center; border:1px solid #ddd;'>{col}</th>"
+                friendly_name = friendly_labels.get(col, col)
+                desglose_html += f"<th style='padding:5px; text-align:center; border:1px solid #ddd;'>{friendly_name}</th>"
             desglose_html += "</tr>"
+            
             for _, row in desglose.iterrows():
                 desglose_html += "<tr>"
                 for col in desglose.columns:
@@ -662,8 +680,8 @@ with tabs[1]:
                     desglose_html += f"<td style='padding:5px; text-align:center; border:1px solid #ddd;'>{value}</td>"
                 desglose_html += "</tr>"
             desglose_html += "</table></div>"
-
-          #-------------- Parte 2: Mostramos la tabla del programa de trabajo desglosado por institución------------#
+            
+            #-------------- Parte 2: Mostramos la tabla del programa de trabajo desglosado por institución --------------#
             st.markdown(desglose_html, unsafe_allow_html=True)
 
 
