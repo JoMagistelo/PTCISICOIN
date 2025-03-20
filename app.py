@@ -815,8 +815,7 @@ with tabs[1]:
 
 
 
-
-#============================================= SE ABRE LA SECCIÓN 5 - "Descripción de los Procesos y Acciones de Mejora"================================= ==============================================
+#============================================= SE ABRE LA SECCIÓN 5 - "Descripción de los Procesos y Acciones de Mejora" =============================================
 #------------------------------------------------------------------------------------------------------------------------------------------------------------
         st.markdown("""
           <div style='background-color:#621132; color:white; padding:10px; border-radius:5px; margin-top:30px; margin-bottom:30px; text-align:center;'>
@@ -824,13 +823,23 @@ with tabs[1]:
           </div>
         """, unsafe_allow_html=True)
 
+        #------------- Filtros --------------
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_trimester = st.selectbox("Filtrar por Trimestre", options=sorted(df_ptci_df4["Trimestre"].unique()))
+        with col2:
+            selected_siglas = st.selectbox("Filtrar por Siglas", options=sorted(df_ptci_df4["Siglas"].unique()))
 
-          #-------------- Parte 1:  Creamos la tabla que muestra la descripción de los Procesos y Acciones de Mejora------------#
-                #----------------- Guardaremos las columnas de nuestra tabla primero-----------------#
+        # Filtrar el DataFrame según los filtros seleccionados
+        filtered_df = df_ptci_df4[
+            (df_ptci_df4["Trimestre"] == selected_trimester) &
+            (df_ptci_df4["Siglas"] == selected_siglas)
+        ]
+
+        #-------------- Parte 1: Creamos la tabla que muestra la descripción de los Procesos y Acciones de Mejora ------------#
         headers_ptci = ["Año", "Trimestre", "Siglas", "Procesos", "AM", "Descripcion", "Fecha_Inicio", "Fecha_Termino",
-                       "Avance_Institución", "Avance_OIC", "¿Evaluado?", "¿Favorable?", "¿AM_Congruete?", "¿Contribuye?"]
+                        "Avance_Institución", "Avance_OIC", "¿Evaluado?", "¿Favorable?", "¿AM_Congruete?", "¿Contribuye?"]
 
-                        #----------------- Creamos la tabla en HTML-----------------#
         desc_ptci_html = "<div style='overflow-x:auto;'><table style='width:100%; border-collapse:collapse; margin-bottom:20px;'>"
         desc_ptci_html += "<tr style='background-color:#621132; color:white;'>"
 
@@ -838,22 +847,29 @@ with tabs[1]:
             desc_ptci_html += f"<th style='padding:12px; text-align:center; border:1px solid #ddd;'>{h}</th>"
         desc_ptci_html += "</tr>"
 
-        #----------------- Llenamos la tabla-----------------#
-        for _, row in df_ptci_df4.iterrows():
+        #-------------- Llenamos la tabla ------------#
+        for _, row in filtered_df.iterrows():
             desc_ptci_html += "<tr>"
             for h in headers_ptci:
                 cell = row.get(h, "")
-                if h in ["Avance_Institución", "Avance_OIC"]:  #Condición para el Avance que es Porcentaje %
+                if h in ["Avance_Institución", "Avance_OIC"]:
                     try:
-                        cell = f"{int(float(cell))}%"           #Añadimos el %
+                        cell = f"{int(float(cell))}%"
                     except:
                         cell = cell
                 desc_ptci_html += f"<td style='padding:12px; text-align:center; border:1px solid #ddd;'>{cell}</td>"
             desc_ptci_html += "</tr>"
         desc_ptci_html += "</table></div>"
 
-          #-------------- Parte 2:  Imprimimos la tabla------------#
+        #-------------- Parte 2: Imprimimos la tabla ------------#
         st.markdown(desc_ptci_html, unsafe_allow_html=True)
+
+
+
+
+
+
+
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #============================================= PIE DE PÁGINA DE LA SECCION PTCI - FUENTE SICOIN ==============================================
 
